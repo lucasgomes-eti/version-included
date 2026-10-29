@@ -1,0 +1,45 @@
+# versinc configuration
+#
+# These are the built-in defaults. Files are merged key by key, later wins:
+#   1. built-in defaults (this file, compiled into the binary)
+#   2. global config:  ~/.config/version-included/config.toml
+#                      ($XDG_CONFIG_HOME/version-included/config.toml if set)
+#   3. project config: versinc.toml at the git repository root
+#   4. the file passed with --config <path>
+#
+# Lists REPLACE inherited lists instead of appending to them: setting
+# `patch = ["fix"]` drops "perf" and "refactor" from the patch list.
+# You can delete any key you don't want to change from the defaults.
+
+# Prefix stripped from tag names before parsing them as SemVer
+# (tag "v1.2.3" -> version 1.2.3). Use "" for unprefixed tags.
+tag_prefix = "v"
+
+# Version printed when no SemVer tag exists yet.
+initial_version = "0.1.0"
+
+# When no commit since the last tag matches a rule below, bump the patch by
+# the number of commits since the tag (1.2.3 + 2 commits -> 1.2.5) instead
+# of printing the current version unchanged.
+bump_unmatched_commits = false
+
+# While the major version is 0, make breaking changes bump the minor
+# (0.4.2 -> 0.5.0) instead of the major (0.4.2 -> 1.0.0).
+breaking_bumps_minor_below_1 = false
+
+# Commit types, matched exactly (case-sensitive) against <type> in a
+# `<type>(<scope>): <subject>` header. The scope is ignored. A
+# `BREAKING CHANGE:` footer or a `!` after the type/scope (`feat!:`,
+# `feat(api)!:`) always bumps the major, whatever the type.
+[rules]
+major = []
+minor = ["feat"]
+patch = ["fix", "perf", "refactor"]
+
+# Prerelease labels for non-release branches, checked in order; the first
+# matching pattern wins. `*` matches any characters (including `/`) and `?`
+# matches one character. A matching branch gets `-<label>.<commits since tag>`
+# appended, e.g. 1.5.0-dev.3. Set `prerelease = []` to disable prereleases.
+[[prerelease]]
+branch = "feature/*"
+label = "dev"

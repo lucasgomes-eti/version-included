@@ -4,7 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`version-included` is a Rust CLI tool that generates a version number from commit messages. It's in the early scaffold stage: just a Cargo binary crate (`src/main.rs`), Rust edition 2024, with no dependencies yet. Licensed under Apache-2.0.
+`version-included` is a Rust CLI (binary `versinc`) that calculates the next SemVer version from git
+history. It is read-only: it never creates tags or commits. Rust edition 2024, Apache-2.0. The
+README documents user-facing behavior; keep it in sync as features land.
+
+## Architecture
+
+The crate is a library (`src/lib.rs`) plus a thin binary (`src/main.rs`).
+
+- Pure logic, no git or filesystem access: `commit.rs` (header/footer parsing), `classify.rs`
+  (commit → `Bump`), `version.rs` (`calculate`), `tags.rs` (latest SemVer tag), `branch.rs`
+  (glob matching, branch resolution), `config.rs` (layer parsing, validation, merging),
+  `output.rs` (text/JSON rendering).
+- Boundaries: `git.rs` (`Git` trait, `SystemGit` shells out to `git`), `env.rs` (`Env` and `Fs`
+  traits). Unit tests use the fakes in `env::tests` and `app::tests`.
+- `app.rs` orchestrates a run given those boundaries; `cli.rs` holds the clap definitions.
+- `config/default.toml` is embedded with `include_str!` as the built-in defaults and is what
+  `versinc init` writes; a test asserts they are identical.
+- Integration tests (`tests/cli.rs`, helpers in `tests/support/`) run the binary against temporary
+  git repos isolated from the user's git config and environment.
 
 ## Commands
 

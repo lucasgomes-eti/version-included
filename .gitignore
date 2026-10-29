@@ -27,3 +27,6 @@ rustc-ice-*.txt
 # Added by cargo
 
 /target
+
+# Coverage report from cargo llvm-cov
+lcov.info

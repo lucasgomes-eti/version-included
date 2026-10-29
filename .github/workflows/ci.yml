@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Superseded pull request runs are cancelled; every push to main finishes.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt, llvm-tools
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      # cargo llvm-cov runs `cargo test` (unit and integration tests) with
+      # coverage instrumentation, so the tests only build and run once.
+      - name: Test with coverage
+        run: cargo llvm-cov --locked --lcov --output-path lcov.info
+
+      - name: Coverage summary
+        run: cargo llvm-cov report --summary-only
+
+      - name: Upload coverage report
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-lcov
+          path: lcov.info
+          retention-days: 7
+
+  # Dogfooding: calculate this repository's version with versinc built from
+  # the same commit, so CI never depends on a previously released binary.
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.versinc.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # versinc needs the full history and tags
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Calculate version with versinc
+        id: versinc
+        run: |
+          cargo run --release --locked --quiet -- --format json > versinc.json
+          cat versinc.json
+          version=$(jq -r .next_version versinc.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "::notice title=versinc::Calculated version $version"
+          {
+            echo "### versinc: \`$version\`"
+            echo
+            echo '```json'
+            cat versinc.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # SonarQube Community Build analyzes a single branch, so only main is analyzed.
+  sonarqube:
+    name: SonarQube
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, version]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history for SCM blame and new-code detection
+
+      # The Rust analyzer runs Clippy itself, so it needs cargo and clippy.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      # The LCOV report holds absolute paths; they match because every
+      # ubuntu-latest job checks out to the same workspace directory.
+      - uses: actions/download-artifact@v8
+        with:
+          name: coverage-lcov
+
+      - name: SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@v8
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: -Dsonar.projectVersion=${{ needs.version.outputs.version }}

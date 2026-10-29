@@ -1,5 +1,7 @@
 # version-included
 
+[![CI](https://github.com/lucasgomes-eti/version-included/actions/workflows/ci.yml/badge.svg)](https://github.com/lucasgomes-eti/version-included/actions/workflows/ci.yml)
+
 `versinc` calculates the next [SemVer 2.0.0](https://semver.org/) version of a project from its git
 history: it finds the latest release tag, reads the commit messages since then, and prints the
 version that release should get.
@@ -228,12 +230,40 @@ cargo run -- <args>         # run versinc
 cargo test                  # unit and integration tests
 cargo fmt                   # format
 cargo clippy --all-targets  # lint
+cargo llvm-cov              # tests with a coverage summary (needs cargo-llvm-cov)
+cargo llvm-cov --lcov --output-path lcov.info   # LCOV report, as CI produces it
 ```
+
+Install the coverage tool with `rustup component add llvm-tools` and
+`cargo install cargo-llvm-cov --locked`.
 
 The version logic is made of pure functions (`src/commit.rs`, `classify.rs`, `version.rs`,
 `tags.rs`, `branch.rs`, `config.rs`, `output.rs`). Git, environment variables and the filesystem
 sit behind the small `Git`, `Env` and `Fs` traits, which tests replace with fakes. Integration
 tests in `tests/` run the real binary against temporary git repositories.
+
+### Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on pushes to `main` and on pull
+requests:
+
+| Job | What it does |
+|---|---|
+| Test (Linux, macOS) | `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, and the test suite under `cargo llvm-cov`; the Linux job uploads `lcov.info` |
+| Version | Builds `versinc` from the same commit (`cargo run --release`) and calculates this repository's own version, shown as a notice and in the job summary. Pull requests get the branch's prerelease version through `GITHUB_HEAD_REF`. |
+| SonarQube | On pushes to `main` only, after the other jobs pass: analyzes the code with the LCOV coverage and Clippy findings, using the calculated version as the project version |
+
+#### SonarQube setup
+
+The analysis targets a self-hosted SonarQube Community Build, which analyzes a single branch, so
+it only runs for `main`. Its built-in Rust analyzer runs Clippy itself during the scan and imports
+coverage through `sonar.rust.lcov.reportPaths` (see
+[`sonar-project.properties`](sonar-project.properties)).
+
+1. Create a project on the server with the key `version-included` (or change `sonar.projectKey`).
+2. Generate a token for it, and add two repository secrets: `SONAR_TOKEN` (the token) and
+   `SONAR_HOST_URL` (the server URL, e.g. `https://sonar.example.com`).
+3. The server must be reachable from GitHub-hosted runners.
 
 ## License
 

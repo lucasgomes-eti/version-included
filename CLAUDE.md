@@ -33,7 +33,13 @@ cargo test                  # run all tests
 cargo test <name>           # run tests whose name matches <name>
 cargo fmt                   # format
 cargo clippy --all-targets  # lint
+cargo llvm-cov              # tests with coverage summary (needs cargo-llvm-cov + llvm-tools)
 ```
+
+CI (`.github/workflows/ci.yml`) runs fmt, clippy with `-D warnings`, and the tests under
+`cargo llvm-cov` on Linux and macOS, prints this repo's own version with `versinc` built from the
+same commit, and runs SonarQube analysis on pushes to `main` only. The public GitHub Action
+(`action.yml`, later phase) is a separate concern from these workflows.
 
 Edition 2024 requires Rust 1.85 or newer.
 

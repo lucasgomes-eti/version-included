@@ -56,11 +56,14 @@ and scope should always be lowercase as shown below.
 - fix for a bug fix for the user, not a fix to a build script. Such commit will trigger a release
   bumping a PATCH version.
 - perf for performance improvements. Such commit will trigger a release bumping a PATCH version.
+- refactor for refactoring production code, e.g. renaming a variable. Such commit will trigger a
+  release bumping a PATCH version.
 - docs for changes to the documentation.
 - style for formatting changes, missing semicolons, etc.
-- refactor for refactoring production code, e.g. renaming a variable.
 - test for adding missing tests, refactoring tests; no production code change.
 - build for updating build configuration, development tools or other changes irrelevant to the user.
+- chore for maintenance that fits no other type, such as the automated `chore(release): vX.Y.Z`
+  version bump commit. Such commit does not trigger a release.
 
 #### Example <scope> values:
 

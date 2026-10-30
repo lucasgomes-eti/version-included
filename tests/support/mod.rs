@@ -99,7 +99,13 @@ impl Sandbox {
     }
 
     pub fn versinc_in(&self, dir: &Path) -> assert_cmd::Command {
-        let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("versinc"));
+        self.program_in(versinc_binary(), dir)
+    }
+
+    /// Any program (e.g. a copy of versinc), run in `dir` with the sandbox's
+    /// isolated environment.
+    pub fn program_in(&self, program: &Path, dir: &Path) -> assert_cmd::Command {
+        let mut cmd = Command::new(program);
         cmd.current_dir(dir);
         self.isolate(&mut cmd);
         assert_cmd::Command::from_std(cmd)
@@ -115,4 +121,9 @@ impl Sandbox {
         );
         String::from_utf8(output.stdout).unwrap()
     }
+}
+
+/// The versinc binary built for the integration tests.
+pub fn versinc_binary() -> &'static Path {
+    assert_cmd::cargo::cargo_bin!("versinc")
 }

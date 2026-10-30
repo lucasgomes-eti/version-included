@@ -1,6 +1,8 @@
 mod support;
 
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
 
 use predicates::prelude::*;
 use predicates::str::contains;
@@ -636,4 +638,211 @@ fn usage_errors_exit_with_2() {
         .args(["init", "--with-prefix"])
         .assert()
         .code(2);
+}
+
+// update
+
+/// The release archive target for the machine running the tests.
+fn release_target() -> &'static str {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("linux", "x86_64") => "x86_64-unknown-linux-musl",
+        ("linux", "aarch64") => "aarch64-unknown-linux-musl",
+        ("macos", "x86_64") => "x86_64-apple-darwin",
+        ("macos", "aarch64") => "aarch64-apple-darwin",
+        other => panic!("no release target for {other:?}"),
+    }
+}
+
+fn sha256(path: &Path) -> String {
+    let output = std::process::Command::new("sha256sum")
+        .arg(path)
+        .output()
+        .or_else(|_| {
+            std::process::Command::new("shasum")
+                .args(["-a", "256"])
+                .arg(path)
+                .output()
+        })
+        .unwrap();
+    String::from_utf8(output.stdout).unwrap()[..64].to_owned()
+}
+
+/// A copy of versinc in a directory of its own, so `update` may replace it,
+/// and a `file://` releases mirror whose latest release is `latest`. The
+/// released "binary" is a script that prints `versinc <latest>`.
+struct UpdateFixture {
+    sandbox: Sandbox,
+    bin_dir: PathBuf,
+    exe: PathBuf,
+    archive: PathBuf,
+}
+
+impl UpdateFixture {
+    fn new(latest: &str) -> Self {
+        let sandbox = Sandbox::new();
+        let bin_dir = sandbox.root.join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+        let exe = bin_dir.join("versinc");
+        fs::copy(support::versinc_binary(), &exe).unwrap();
+
+        sandbox.write(
+            "releases/latest/download/dist-manifest.json",
+            &format!(
+                r#"{{"releases": [{{"app_name": "version-included", "app_version": "{latest}"}}]}}"#
+            ),
+        );
+        let name = format!("version-included-{}", release_target());
+        let script = sandbox.write(
+            &format!("build/{name}/versinc"),
+            &format!("#!/bin/sh\necho \"versinc {latest}\"\n"),
+        );
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        let release_dir = sandbox.root.join(format!("releases/download/v{latest}"));
+        fs::create_dir_all(&release_dir).unwrap();
+        let archive = release_dir.join(format!("{name}.tar.xz"));
+        let status = std::process::Command::new("tar")
+            .arg("-cJf")
+            .arg(&archive)
+            .arg("-C")
+            .arg(sandbox.root.join("build"))
+            .arg(&name)
+            .status()
+            .unwrap();
+        assert!(status.success());
+        fs::write(
+            release_dir.join(format!("{name}.tar.xz.sha256")),
+            format!("{} *{name}.tar.xz\n", sha256(&archive)),
+        )
+        .unwrap();
+
+        UpdateFixture {
+            sandbox,
+            bin_dir,
+            exe,
+            archive,
+        }
+    }
+
+    fn versinc(&self) -> assert_cmd::Command {
+        let mut cmd = self.sandbox.program_in(&self.exe, &self.sandbox.root);
+        cmd.env(
+            "VERSINC_RELEASES_URL",
+            format!("file://{}", self.sandbox.root.join("releases").display()),
+        );
+        cmd
+    }
+
+    fn installed_version(&self) -> String {
+        let output = self.versinc().arg("--version").output().unwrap();
+        String::from_utf8(output.stdout).unwrap()
+    }
+}
+
+const CURRENT: &str = env!("CARGO_PKG_VERSION");
+
+#[test]
+fn update_installs_newer_release() {
+    let fixture = UpdateFixture::new("99.0.0");
+    fixture
+        .versinc()
+        .arg("update")
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(contains(format!(
+            "updated versinc {CURRENT} -> 99.0.0 ({})",
+            fixture.exe.display()
+        )));
+    assert_eq!(fixture.installed_version(), "versinc 99.0.0\n");
+    assert!(!fixture.bin_dir.join(".versinc-update").exists());
+}
+
+#[test]
+fn update_check_does_not_install() {
+    let fixture = UpdateFixture::new("99.0.0");
+    fixture
+        .versinc()
+        .args(["update", "--check"])
+        .assert()
+        .success()
+        .stderr(format!(
+            "versinc 99.0.0 is available (installed: {CURRENT}); run `versinc update` to install it\n"
+        ));
+    assert_eq!(fixture.installed_version(), format!("versinc {CURRENT}\n"));
+}
+
+#[test]
+fn update_when_up_to_date() {
+    let fixture = UpdateFixture::new(CURRENT);
+    fixture
+        .versinc()
+        .arg("update")
+        .assert()
+        .success()
+        .stderr(format!("versinc {CURRENT} is up to date\n"));
+    assert_eq!(fixture.installed_version(), format!("versinc {CURRENT}\n"));
+}
+
+#[test]
+fn update_rejects_checksum_mismatch() {
+    let fixture = UpdateFixture::new("99.0.0");
+    fs::write(
+        fixture.archive.with_extension("xz.sha256"),
+        format!("{} *x\n", "0".repeat(64)),
+    )
+    .unwrap();
+    fixture
+        .versinc()
+        .arg("update")
+        .assert()
+        .code(1)
+        .stderr(contains("error: checksum mismatch for"));
+    assert_eq!(fixture.installed_version(), format!("versinc {CURRENT}\n"));
+    assert!(!fixture.bin_dir.join(".versinc-update").exists());
+}
+
+#[test]
+fn update_reports_missing_release() {
+    let fixture = UpdateFixture::new("99.0.0");
+    fs::remove_file(&fixture.archive).unwrap();
+    fixture
+        .versinc()
+        .arg("update")
+        .assert()
+        .code(1)
+        .stderr(contains("error: `curl"));
+    assert_eq!(fixture.installed_version(), format!("versinc {CURRENT}\n"));
+}
+
+#[test]
+fn update_in_read_only_directory_explains_permissions() {
+    let fixture = UpdateFixture::new("99.0.0");
+    fs::set_permissions(&fixture.bin_dir, fs::Permissions::from_mode(0o555)).unwrap();
+    // Root ignores directory permissions, so the check is meaningless there.
+    let root = fs::write(fixture.bin_dir.join("probe"), "").is_ok();
+    let assert = fixture.versinc().arg("update").assert();
+    fs::set_permissions(&fixture.bin_dir, fs::Permissions::from_mode(0o755)).unwrap();
+    if root {
+        return;
+    }
+    assert
+        .code(1)
+        .stderr(contains(format!(
+            "error: cannot replace versinc in {}: permission denied",
+            fixture.bin_dir.display()
+        )))
+        .stderr(contains("sudo versinc update"));
+    assert_eq!(fixture.installed_version(), format!("versinc {CURRENT}\n"));
+}
+
+#[test]
+fn update_without_curl() {
+    let fixture = UpdateFixture::new("99.0.0");
+    fixture
+        .versinc()
+        .arg("update")
+        .env("PATH", fixture.sandbox.root.join("empty-bin"))
+        .assert()
+        .code(1)
+        .stderr("error: could not run `curl`; is it installed and on PATH?\n");
 }

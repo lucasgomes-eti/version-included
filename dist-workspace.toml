@@ -17,3 +17,5 @@ install-path = "~/.local/bin"
 hosting = "github"
 # Whether to install an updater program
 install-updater = false
+# Test the public GitHub Action against each newly published release
+post-announce-jobs = ["./action-test"]

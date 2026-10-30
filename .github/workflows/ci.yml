@@ -183,6 +183,9 @@ jobs:
           sed -i "0,/^version = \".*\"/s//version = \"$VERSION\"/" Cargo.toml
           grep -qx "version = \"$VERSION\"" Cargo.toml
           cargo update --workspace
+          # The public action installs this release by default from this tag on.
+          sed -i -E "s/^( *default: )\"[^\"]*\"( # x-release-version)$/\1\"$VERSION\"\2/" action.yml
+          grep -q "default: \"$VERSION\" # x-release-version" action.yml
           git diff --stat
 
           git commit --all --message "chore(release): $tag"

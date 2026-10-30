@@ -17,7 +17,11 @@ The crate is a library (`src/lib.rs`) plus a thin binary (`src/main.rs`).
   (glob matching, branch resolution), `config.rs` (layer parsing, validation, merging),
   `output.rs` (text/JSON rendering).
 - Boundaries: `git.rs` (`Git` trait, `SystemGit` shells out to `git`), `env.rs` (`Env` and `Fs`
-  traits). Unit tests use the fakes in `env::tests` and `app::tests`.
+  traits), `update.rs` (`Tools` trait, `SystemTools` shells out to `curl`, `sha256sum`/`shasum` and
+  `tar`). Unit tests use the fakes in `env::tests`, `update::tests` and `app::tests`.
+- `update.rs` implements `versinc update`: reads the latest version from the release's
+  `dist-manifest.json`, verifies the archive checksum, unpacks into `.versinc-update/` next to the
+  binary and renames over it. Integration tests use a `file://` mirror via `VERSINC_RELEASES_URL`.
 - `app.rs` orchestrates a run given those boundaries; `cli.rs` holds the clap definitions.
 - `config/default.toml` is embedded with `include_str!` as the built-in defaults and is what
   `versinc init` writes; a test asserts they are identical.

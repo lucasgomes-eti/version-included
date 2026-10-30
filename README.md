@@ -52,6 +52,27 @@ cargo install --git https://github.com/lucasgomes-eti/version-included
 
 `versinc` needs the `git` executable on `PATH`.
 
+### Updating
+
+```sh
+versinc update --check   # report whether a newer release exists
+versinc update           # install it
+```
+
+`versinc update` downloads the latest release archive for your platform, verifies its sha256
+checksum, and replaces the running executable in place, wherever it is installed. It never runs in
+the background and never checks on its own. It uses `curl`, `tar` (with xz support) and
+`sha256sum` or `shasum`, which Linux and macOS provide. If the executable's directory isn't
+writable (for example `/usr/local/bin`), it stops with an error instead of asking for elevated
+permissions.
+
+In CI there is nothing to update: the [GitHub Action](#github-action) installs a release on every
+run (`version: latest` always installs the newest one).
+
+`VERSINC_RELEASES_URL` points `update` at a mirror of the releases instead of GitHub (`https://` or
+`file://`). The mirror needs the GitHub Releases layout: `latest/download/dist-manifest.json` and
+`download/vX.Y.Z/<archive>`.
+
 ## How the version is calculated
 
 1. **Find the base version.** Among the tags reachable from `HEAD`, take the highest version that

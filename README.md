@@ -261,8 +261,10 @@ coverage through `sonar.rust.lcov.reportPaths` (see
 [`sonar-project.properties`](sonar-project.properties)).
 
 1. Create a project on the server with the key `version-included` (or change `sonar.projectKey`).
-2. Generate a token for it, and add two repository secrets: `SONAR_TOKEN` (the token) and
-   `SONAR_HOST_URL` (the server URL, e.g. `https://sonar.example.com`).
+2. Generate a token for it, and add two secrets to the `main` environment (Settings →
+   Environments): `SONAR_TOKEN` (the token) and `SONAR_HOST_URL` (the server URL, e.g.
+   `https://sonar.example.com`). The SonarQube job declares `environment: main`; environment
+   secrets are not visible to jobs that don't.
 3. The server must be reachable from GitHub-hosted runners.
 
 ## License

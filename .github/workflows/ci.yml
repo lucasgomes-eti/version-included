@@ -97,6 +97,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [test, version]
     runs-on: ubuntu-latest
+    # SONAR_TOKEN and SONAR_HOST_URL are secrets of the `main` environment,
+    # which only jobs that declare it can read.
+    environment: main
     steps:
       - uses: actions/checkout@v7
         with:

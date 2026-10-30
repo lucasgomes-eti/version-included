@@ -13,7 +13,7 @@ inputs:
     required: false
     # The release job in this repository rewrites this line in every
     # `chore(release)` commit, so each tag's default is its own release.
-    default: "0.2.0" # x-release-version
+    default: "0.3.0" # x-release-version
   args:
     description: >-
       Extra arguments for versinc, e.g. "--with-prefix --config ci/versinc.toml".

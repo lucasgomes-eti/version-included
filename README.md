@@ -1,6 +1,6 @@
 # version-included
 
-[![CI](https://github.com/lucasgomes-eti/version-included/actions/workflows/ci.yml/badge.svg)](https://github.com/lucasgomes-eti/version-included/actions/workflows/ci.yml)
+[![CI](https://github.com/lucasgomes-eti/version-included/actions/workflows/ci.yml/badge.svg)](https://github.com/lucasgomes-eti/version-included/actions/workflows/ci.yml) [![Quality gate status](https://sonarqube-lucasgomes-eti.up.railway.app/api/project_badges/measure?project=version-included&metric=alert_status&token=sqb_35e9db860736d5407b2c5b0c2f44f4d3d82ce33b)](https://sonarqube-lucasgomes-eti.up.railway.app/summary/new_code?id=version-included) [![Coverage](https://sonarqube-lucasgomes-eti.up.railway.app/api/project_badges/measure?project=version-included&metric=coverage&token=sqb_35e9db860736d5407b2c5b0c2f44f4d3d82ce33b)](https://sonarqube-lucasgomes-eti.up.railway.app/summary/new_code?id=version-included) [![Duplicated Lines (%)](https://sonarqube-lucasgomes-eti.up.railway.app/api/project_badges/measure?project=version-included&metric=duplicated_lines_density&token=sqb_35e9db860736d5407b2c5b0c2f44f4d3d82ce33b)](https://sonarqube-lucasgomes-eti.up.railway.app/summary/new_code?id=version-included) [![Lines of Code](https://sonarqube-lucasgomes-eti.up.railway.app/api/project_badges/measure?project=version-included&metric=ncloc&token=sqb_35e9db860736d5407b2c5b0c2f44f4d3d82ce33b)](https://sonarqube-lucasgomes-eti.up.railway.app/summary/new_code?id=version-included)
 
 `versinc` calculates the next [SemVer 2.0.0](https://semver.org/) version of a project from its git
 history: it finds the latest release tag, reads the commit messages since then, and prints the
@@ -47,13 +47,13 @@ as is, without bumping it; that is the version of your first release.
 Commit headers follow the [Karma convention](https://karma-runner.github.io/6.4/dev/git-commit-msg.html),
 `<type>(<scope>): <subject>`:
 
-| Commit | Bump |
-|---|---|
+| Commit                                                                               | Bump  |
+| ------------------------------------------------------------------------------------ | ----- |
 | `BREAKING CHANGE:` footer, or `!` after the type/scope (`feat!: …`, `feat(api)!: …`) | major |
-| `feat` | minor |
-| `fix`, `perf`, `refactor` | patch |
-| Any other type (`docs`, `style`, `test`, `build`, `chore`, …) | none |
-| A message that doesn't follow the header format | none |
+| `feat`                                                                               | minor |
+| `fix`, `perf`, `refactor`                                                            | patch |
+| Any other type (`docs`, `style`, `test`, `build`, `chore`, …)                        | none  |
+| A message that doesn't follow the header format                                      | none  |
 
 - Types are matched exactly and case-sensitively against the header's type; the scope is ignored.
   `Feat: …` and `feature: …` bump nothing by default.
@@ -63,13 +63,13 @@ Commit headers follow the [Karma convention](https://karma-runner.github.io/6.4/
 
 Examples, starting from tag `v1.2.3`:
 
-| Commits since the tag | Next version |
-|---|---|
-| none | `1.2.3` |
-| `fix: …` | `1.2.4` |
-| `fix: …`, `feat: …`, `docs: …` | `1.3.0` |
-| `feat(api)!: …` | `2.0.0` |
-| `docs: …`, `chore: …` | `1.2.3` (or `1.2.5` with `bump_unmatched_commits = true`) |
+| Commits since the tag          | Next version                                              |
+| ------------------------------ | --------------------------------------------------------- |
+| none                           | `1.2.3`                                                   |
+| `fix: …`                       | `1.2.4`                                                   |
+| `fix: …`, `feat: …`, `docs: …` | `1.3.0`                                                   |
+| `feat(api)!: …`                | `2.0.0`                                                   |
+| `docs: …`, `chore: …`          | `1.2.3` (or `1.2.5` with `bump_unmatched_commits = true`) |
 
 ### Edge cases
 
@@ -95,7 +95,7 @@ $ versinc
 ```
 
 If the commits on the branch don't bump anything, the patch is bumped before adding the label
-(`1.4.0` → `1.4.1-dev.1`): a `1.4.0-dev.1` would sort *below* the already released `1.4.0`.
+(`1.4.0` → `1.4.1-dev.1`): a `1.4.0-dev.1` would sort _below_ the already released `1.4.0`.
 A branch with no commits since the tag gets the plain release version.
 
 The branch comes from `git rev-parse --abbrev-ref HEAD`. When `HEAD` is detached, as it often is
@@ -181,12 +181,12 @@ error: invalid config file /work/app/versinc.toml: key `initial_version`: "1.2" 
 By default `versinc` prints only the version to stdout, without the tag prefix. Everything else
 (warnings, errors) goes to stderr, so `VERSION=$(versinc)` is safe in scripts.
 
-| Option | Effect |
-|---|---|
-| `--with-prefix` | Prefix printed versions with `tag_prefix` (`v1.5.0`) |
-| `--output <file>` | Also write the version to a file |
-| `--format json` | Print details about the calculation as JSON |
-| `--config <path>` | Merge this config file over the others |
+| Option            | Effect                                               |
+| ----------------- | ---------------------------------------------------- |
+| `--with-prefix`   | Prefix printed versions with `tag_prefix` (`v1.5.0`) |
+| `--output <file>` | Also write the version to a file                     |
+| `--format json`   | Print details about the calculation as JSON          |
+| `--config <path>` | Merge this config file over the others               |
 
 `--format json` prints the previous and next version, the bump applied to the version core, the
 branch, the prerelease label, the config files that were loaded, and the commits that caused the
@@ -201,7 +201,11 @@ bump:
   "prerelease_label": "dev",
   "config_files": ["/work/app/versinc.toml"],
   "commits": [
-    { "hash": "8b7e6d5…", "subject": "feat(search): add index", "bump": "minor" }
+    {
+      "hash": "8b7e6d5…",
+      "subject": "feat(search): add index",
+      "bump": "minor"
+    }
   ]
 }
 ```
@@ -212,11 +216,11 @@ or no prerelease. With `breaking_bumps_minor_below_1`, a breaking commit is list
 
 ### Exit codes and errors
 
-| Code | Meaning |
-|---|---|
-| 0 | Success |
-| 1 | Error: not in a git repository, shallow clone, invalid config, unreadable files, … |
-| 2 | Invalid command-line usage |
+| Code | Meaning                                                                            |
+| ---- | ---------------------------------------------------------------------------------- |
+| 0    | Success                                                                            |
+| 1    | Error: not in a git repository, shallow clone, invalid config, unreadable files, … |
+| 2    | Invalid command-line usage                                                         |
 
 `versinc` refuses to run in a **shallow clone**, because missing history and tags would produce a
 wrong version. Fetch the full history first (`git fetch --unshallow --tags`); with
@@ -247,11 +251,11 @@ tests in `tests/` run the real binary against temporary git repositories.
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on pushes to `main` and on pull
 requests:
 
-| Job | What it does |
-|---|---|
-| Test (Linux, macOS) | `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, and the test suite under `cargo llvm-cov`; the Linux job uploads `lcov.info` |
-| Version | Builds `versinc` from the same commit (`cargo run --release`) and calculates this repository's own version, shown as a notice and in the job summary. Pull requests get the branch's prerelease version through `GITHUB_HEAD_REF`. |
-| SonarQube | On pushes to `main` only, after the other jobs pass: analyzes the code with the LCOV coverage and Clippy findings, using the calculated version as the project version |
+| Job                 | What it does                                                                                                                                                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Test (Linux, macOS) | `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, and the test suite under `cargo llvm-cov`; the Linux job uploads `lcov.info`                                                                                     |
+| Version             | Builds `versinc` from the same commit (`cargo run --release`) and calculates this repository's own version, shown as a notice and in the job summary. Pull requests get the branch's prerelease version through `GITHUB_HEAD_REF`. |
+| SonarQube           | On pushes to `main` only, after the other jobs pass: analyzes the code with the LCOV coverage and Clippy findings, using the calculated version as the project version                                                             |
 
 #### SonarQube setup
 

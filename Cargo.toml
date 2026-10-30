@@ -23,3 +23,8 @@ toml = { version = "1.1.8", default-features = false, features = ["parse", "serd
 assert_cmd = "2.2.2"
 predicates = "3.1.4"
 tempfile = "3.27.0"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"

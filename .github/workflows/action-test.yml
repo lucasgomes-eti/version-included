@@ -87,6 +87,12 @@ jobs:
   # The action must fail clearly instead of misbehaving where it can't run.
   expected-failures:
     name: Fails on ${{ matrix.case }}
+    # Skipped on `chore(release)` pushes like the test job: with the release
+    # still being built, the download would fail and pass these checks for
+    # the wrong reason.
+    if: >-
+      inputs.plan != '' || github.event_name != 'push'
+      || !startsWith(github.event.head_commit.message, 'chore(release):')
     strategy:
       fail-fast: false
       matrix:

@@ -38,8 +38,11 @@ cargo llvm-cov              # tests with coverage summary (needs cargo-llvm-cov 
 
 CI (`.github/workflows/ci.yml`) runs fmt, clippy with `-D warnings`, and the tests under
 `cargo llvm-cov` on Linux and macOS, prints this repo's own version with `versinc` built from the
-same commit, and runs SonarQube analysis on pushes to `main` only. The public GitHub Action
-(`action.yml`, later phase) is a separate concern from these workflows.
+same commit, and runs SonarQube analysis on pushes to `main` only. When the calculated version
+changes on `main`, its Release job has a GitHub App bot push `chore(release): vX.Y.Z` plus the tag,
+which starts dist's `release.yml`. `release.yml` is generated: edit `dist-workspace.toml` and run
+`dist generate` instead of editing it. The public GitHub Action (`action.yml`, later phase) is a
+separate concern from these workflows.
 
 Edition 2024 requires Rust 1.85 or newer.
 

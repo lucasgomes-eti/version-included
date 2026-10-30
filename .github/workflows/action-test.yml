@@ -1,0 +1,119 @@
+name: Action test
+
+# Tests the public action (action.yml) the way other repositories use it.
+# Besides pull requests and pushes, dist calls this workflow from release.yml
+# after publishing a release (post-announce-jobs), so every release's action
+# is tested against its own freshly published binaries.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      plan:
+        description: dist's release plan (unused)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Action (${{ matrix.os }})
+    # A `chore(release)` commit points the action at a release that dist is
+    # still building; that release is tested when release.yml calls this
+    # workflow instead.
+    if: >-
+      inputs.plan != '' || github.event_name != 'push'
+      || !startsWith(github.event.head_commit.message, 'chore(release):')
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Run the action with its defaults
+        id: default
+        uses: ./
+
+      - name: Check the default install
+        shell: bash
+        env:
+          VERSION: ${{ steps.default.outputs.version }}
+        run: |
+          fail() { echo "::error title=Action test::$1"; exit 1; }
+          semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+          [[ "$VERSION" =~ $semver ]] || fail "output \"$VERSION\" is not a SemVer version"
+
+          # The installed binary is the release named by action.yml's default.
+          default=$(sed -nE 's/^ *default: "([^"]+)" # x-release-version$/\1/p' action.yml)
+          [ -n "$default" ] || fail "no x-release-version default in action.yml"
+          installed=$(versinc --version)
+          [ "$installed" = "versinc $default" ] || fail "installed \"$installed\", expected versinc $default"
+
+          # versinc is on PATH for later steps and agrees with the output.
+          [ "$(versinc)" = "$VERSION" ] || fail "versinc printed $(versinc), output was $VERSION"
+          echo "Action calculated $VERSION with $installed"
+
+      - name: Run the action with arguments
+        id: prefixed
+        uses: ./
+        with:
+          args: --with-prefix --format json
+
+      - name: Run the action with the latest release
+        id: latest
+        uses: ./
+        with:
+          version: latest
+
+      - name: Check outputs
+        shell: bash
+        env:
+          VERSION: ${{ steps.default.outputs.version }}
+          PREFIXED: ${{ steps.prefixed.outputs.version }}
+          LATEST: ${{ steps.latest.outputs.version }}
+        run: |
+          fail() { echo "::error title=Action test::$1"; exit 1; }
+          [ "$PREFIXED" = "v$VERSION" ] || fail "prefixed output \"$PREFIXED\", expected v$VERSION"
+          [ -n "$LATEST" ] || fail "latest release produced no output"
+
+  # The action must fail clearly instead of misbehaving where it can't run.
+  expected-failures:
+    name: Fails on ${{ matrix.case }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - case: Windows
+            os: windows-latest
+            fetch-depth: 0
+          - case: a shallow clone
+            os: ubuntu-latest
+            fetch-depth: 1
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ matrix.fetch-depth }}
+
+      - name: Run the action
+        id: action
+        uses: ./
+        continue-on-error: true
+
+      - name: Expect the action to fail
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          if [ "$OUTCOME" != failure ]; then
+            echo "::error title=Action test::expected the action to fail, outcome was $OUTCOME"
+            exit 1
+          fi

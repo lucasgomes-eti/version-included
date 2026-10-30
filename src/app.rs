@@ -2,20 +2,23 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use crate::branch;
-use crate::cli::{CalculateArgs, Cli, Command, Format, InitArgs};
+use crate::cli::{CalculateArgs, Cli, Command, Format, InitArgs, UpdateArgs};
 use crate::config::{self, Config, Source};
 use crate::env::{Env, Fs};
 use crate::error::Error;
 use crate::git::Git;
 use crate::output;
 use crate::tags;
+use crate::update::{self, Tools};
 use crate::version;
 
-/// The outside world: git, environment variables and the filesystem.
+/// The outside world: git, the process environment, the filesystem, and the
+/// download tools `update` uses.
 pub struct Deps<'a> {
     pub git: &'a dyn Git,
     pub env: &'a dyn Env,
     pub fs: &'a dyn Fs,
+    pub tools: &'a dyn Tools,
 }
 
 /// Runs the parsed command line. Results go to `stdout`; warnings and
@@ -28,6 +31,7 @@ pub fn run(
 ) -> Result<(), Error> {
     match &cli.command {
         Some(Command::Init(args)) => init(args, deps, stderr),
+        Some(Command::Update(args)) => self_update(args, deps, stderr),
         None => calculate(&cli.calculate, deps, stdout, stderr),
     }
 }
@@ -117,6 +121,18 @@ fn load_config(
     Ok((config, sources.into_iter().map(|s| s.name).collect()))
 }
 
+fn self_update(args: &UpdateArgs, deps: &Deps, stderr: &mut dyn Write) -> Result<(), Error> {
+    let current =
+        semver::Version::parse(env!("CARGO_PKG_VERSION")).expect("package version is SemVer");
+    let request = update::Request {
+        check: args.check,
+        current: &current,
+        os: std::env::consts::OS,
+        arch: std::env::consts::ARCH,
+    };
+    update::run(&request, deps.env, deps.fs, deps.tools, stderr)
+}
+
 fn init(args: &InitArgs, deps: &Deps, stderr: &mut dyn Write) -> Result<(), Error> {
     let path = if args.global {
         let path = config::global_path(deps.env).ok_or(Error::NoGlobalConfigDir)?;
@@ -145,6 +161,7 @@ mod tests {
     use super::*;
     use crate::commit::Commit;
     use crate::env::tests::{FakeEnv, FakeFs};
+    use crate::update::tests::FakeTools;
     use clap::Parser;
     use std::cell::RefCell;
 
@@ -210,10 +227,26 @@ mod tests {
     }
 
     fn run_with(args: &[&str], git: &FakeGit, env: &FakeEnv, fs: &FakeFs) -> Run {
+        run_with_tools(args, git, env, fs, &FakeTools::new(fs))
+    }
+
+    fn run_with_tools(
+        args: &[&str],
+        git: &FakeGit,
+        env: &FakeEnv,
+        fs: &FakeFs,
+        tools: &FakeTools,
+    ) -> Run {
         let cli =
             Cli::try_parse_from(std::iter::once("versinc").chain(args.iter().copied())).unwrap();
         let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
-        let result = run(&cli, &Deps { git, env, fs }, &mut stdout, &mut stderr);
+        let deps = Deps {
+            git,
+            env,
+            fs,
+            tools,
+        };
+        let result = run(&cli, &deps, &mut stdout, &mut stderr);
         Run {
             result,
             stdout: String::from_utf8(stdout).unwrap(),
@@ -540,5 +573,32 @@ mod tests {
             message.starts_with("failed to write /repo/versinc.toml"),
             "{message}"
         );
+    }
+
+    #[test]
+    fn update_checks_the_running_version() {
+        let fs = FakeFs::default();
+        let mut tools = FakeTools::new(&fs);
+        tools.texts.insert(
+            format!(
+                "{}/latest/download/dist-manifest.json",
+                update::RELEASES_URL
+            ),
+            format!(
+                r#"{{"releases": [{{"app_name": "version-included", "app_version": "{}"}}]}}"#,
+                env!("CARGO_PKG_VERSION")
+            ),
+        );
+        let git = FakeGit {
+            toplevel: None,
+            ..FakeGit::default()
+        };
+        let run = run_with_tools(&["update", "--check"], &git, &home(), &fs, &tools);
+        run.result.unwrap();
+        assert_eq!(
+            run.stderr,
+            format!("versinc {} is up to date\n", env!("CARGO_PKG_VERSION"))
+        );
+        assert_eq!(run.stdout, "");
     }
 }

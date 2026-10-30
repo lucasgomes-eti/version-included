@@ -51,6 +51,12 @@ pub enum Command {
     /// Writes versinc.toml at the root of the current git repository, or the
     /// global config with --global.
     Init(InitArgs),
+
+    /// Update versinc to the latest release
+    ///
+    /// Downloads the release archive for this platform, verifies its sha256
+    /// checksum, and replaces this executable. Needs curl and tar.
+    Update(UpdateArgs),
 }
 
 #[derive(Debug, Args)]
@@ -62,6 +68,13 @@ pub struct InitArgs {
     /// Overwrite an existing file
     #[arg(long)]
     pub force: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct UpdateArgs {
+    /// Only report whether a newer release is available
+    #[arg(long)]
+    pub check: bool,
 }
 
 #[cfg(test)]
@@ -114,6 +127,19 @@ mod tests {
         };
         assert!(args.global);
         assert!(args.force);
+    }
+
+    #[test]
+    fn update_flags() {
+        let Some(Command::Update(args)) = parse(&["update"]).unwrap().command else {
+            panic!("expected update");
+        };
+        assert!(!args.check);
+        let Some(Command::Update(args)) = parse(&["update", "--check"]).unwrap().command else {
+            panic!("expected update");
+        };
+        assert!(args.check);
+        assert!(parse(&["update", "--force"]).is_err());
     }
 
     #[test]

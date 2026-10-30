@@ -1,11 +1,13 @@
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-/// Read access to environment variables.
+/// Read access to the process environment.
 pub trait Env {
     /// The variable's value, or `None` if it is unset or not valid Unicode.
     fn var(&self, key: &str) -> Option<String>;
+    /// Path of the running `versinc` executable.
+    fn current_exe(&self) -> io::Result<PathBuf>;
 }
 
 /// The filesystem operations `versinc` needs.
@@ -15,6 +17,12 @@ pub trait Fs {
     /// [`io::ErrorKind::AlreadyExists`] if the file exists.
     fn write(&self, path: &Path, contents: &str, overwrite: bool) -> io::Result<()>;
     fn create_dir_all(&self, path: &Path) -> io::Result<()>;
+    /// Removes a directory and everything in it.
+    fn remove_dir_all(&self, path: &Path) -> io::Result<()>;
+    /// Moves `from` to `to`, atomically replacing `to` on the same filesystem.
+    fn rename(&self, from: &Path, to: &Path) -> io::Result<()>;
+    /// Marks a file as executable by everyone (mode 755).
+    fn set_executable(&self, path: &Path) -> io::Result<()>;
 }
 
 /// The process environment.
@@ -23,6 +31,10 @@ pub struct SystemEnv;
 impl Env for SystemEnv {
     fn var(&self, key: &str) -> Option<String> {
         std::env::var(key).ok()
+    }
+
+    fn current_exe(&self) -> io::Result<PathBuf> {
+        std::env::current_exe()
     }
 }
 
@@ -50,6 +62,25 @@ impl Fs for SystemFs {
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
         fs::create_dir_all(path)
     }
+
+    fn remove_dir_all(&self, path: &Path) -> io::Result<()> {
+        fs::remove_dir_all(path)
+    }
+
+    fn rename(&self, from: &Path, to: &Path) -> io::Result<()> {
+        fs::rename(from, to)
+    }
+
+    #[cfg(unix)]
+    fn set_executable(&self, path: &Path) -> io::Result<()> {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path, fs::Permissions::from_mode(0o755))
+    }
+
+    #[cfg(not(unix))]
+    fn set_executable(&self, _path: &Path) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -57,23 +88,38 @@ pub(crate) mod tests {
     use super::*;
     use std::cell::RefCell;
     use std::collections::HashMap;
-    use std::path::PathBuf;
 
-    pub(crate) struct FakeEnv(HashMap<String, String>);
+    pub(crate) struct FakeEnv {
+        vars: HashMap<String, String>,
+        exe: Option<PathBuf>,
+    }
 
     impl FakeEnv {
         pub(crate) fn new(vars: &[(&str, &str)]) -> Self {
-            FakeEnv(
-                vars.iter()
+            FakeEnv {
+                vars: vars
+                    .iter()
                     .map(|(k, v)| (k.to_string(), v.to_string()))
                     .collect(),
-            )
+                exe: None,
+            }
+        }
+
+        pub(crate) fn with_exe(mut self, path: &str) -> Self {
+            self.exe = Some(PathBuf::from(path));
+            self
         }
     }
 
     impl Env for FakeEnv {
         fn var(&self, key: &str) -> Option<String> {
-            self.0.get(key).cloned()
+            self.vars.get(key).cloned()
+        }
+
+        fn current_exe(&self) -> io::Result<PathBuf> {
+            self.exe
+                .clone()
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "no executable"))
         }
     }
 
@@ -83,6 +129,8 @@ pub(crate) mod tests {
     pub(crate) struct FakeFs {
         pub(crate) files: RefCell<HashMap<PathBuf, String>>,
         pub(crate) dirs: RefCell<Vec<PathBuf>>,
+        pub(crate) removed_dirs: RefCell<Vec<PathBuf>>,
+        pub(crate) executables: RefCell<Vec<PathBuf>>,
         pub(crate) read_only_dirs: Vec<PathBuf>,
         pub(crate) unreadable: Vec<PathBuf>,
     }
@@ -137,6 +185,34 @@ pub(crate) mod tests {
             self.dirs.borrow_mut().push(path.to_path_buf());
             Ok(())
         }
+
+        fn remove_dir_all(&self, path: &Path) -> io::Result<()> {
+            self.check_writable(path)?;
+            self.files
+                .borrow_mut()
+                .retain(|file, _| !file.starts_with(path));
+            self.removed_dirs.borrow_mut().push(path.to_path_buf());
+            Ok(())
+        }
+
+        fn rename(&self, from: &Path, to: &Path) -> io::Result<()> {
+            self.check_writable(from)?;
+            self.check_writable(to)?;
+            let mut files = self.files.borrow_mut();
+            let contents = files
+                .remove(from)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "not found"))?;
+            files.insert(to.to_path_buf(), contents);
+            Ok(())
+        }
+
+        fn set_executable(&self, path: &Path) -> io::Result<()> {
+            if !self.files.borrow().contains_key(path) {
+                return Err(io::Error::new(io::ErrorKind::NotFound, "not found"));
+            }
+            self.executables.borrow_mut().push(path.to_path_buf());
+            Ok(())
+        }
     }
 
     #[test]
@@ -144,6 +220,7 @@ pub(crate) mod tests {
         // PATH is set in every environment the tests run in.
         assert!(SystemEnv.var("PATH").is_some());
         assert_eq!(SystemEnv.var("VERSINC_TEST_SURELY_UNSET_VARIABLE"), None);
+        assert!(SystemEnv.current_exe().unwrap().is_absolute());
     }
 
     #[test]
@@ -162,6 +239,22 @@ pub(crate) mod tests {
 
         SystemFs.write(&file, "three", true).unwrap();
         assert_eq!(SystemFs.read_to_string(&file).unwrap(), "three");
+
+        SystemFs.set_executable(&file).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(&file).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o755);
+        }
+
+        let moved = dir.path().join("moved.txt");
+        SystemFs.rename(&file, &moved).unwrap();
+        assert_eq!(SystemFs.read_to_string(&moved).unwrap(), "three");
+        assert!(!file.exists());
+
+        SystemFs.remove_dir_all(&dir.path().join("a")).unwrap();
+        assert!(!nested.exists());
     }
 
     #[test]

@@ -16,4 +16,5 @@ pub mod error;
 pub mod git;
 pub mod output;
 pub mod tags;
+pub mod update;
 pub mod version;

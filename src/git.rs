@@ -38,8 +38,8 @@ impl SystemGit {
             .args(args)
             .output()
             .map_err(|e| match e.kind() {
-                io::ErrorKind::NotFound => Error::GitNotFound,
-                _ => Error::Git {
+                io::ErrorKind::NotFound => Error::ToolNotFound("git"),
+                _ => Error::Command {
                     command: command_line(args),
                     stderr: e.to_string(),
                 },
@@ -50,7 +50,7 @@ impl SystemGit {
     fn stdout(&self, args: &[&str]) -> Result<String, Error> {
         let output = self.run(args)?;
         if !output.status.success() {
-            return Err(Error::Git {
+            return Err(Error::Command {
                 command: command_line(args),
                 stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
             });

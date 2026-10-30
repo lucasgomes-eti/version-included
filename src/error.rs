@@ -6,10 +6,10 @@ use std::path::PathBuf;
 /// after `error: ` on stderr.
 #[derive(Debug)]
 pub enum Error {
-    /// The `git` executable could not be started.
-    GitNotFound,
-    /// A git command exited unsuccessfully.
-    Git { command: String, stderr: String },
+    /// An external program (`git`, `curl`, `tar`, …) could not be started.
+    ToolNotFound(&'static str),
+    /// An external command exited unsuccessfully.
+    Command { command: String, stderr: String },
     /// The working directory is not inside a git work tree.
     NotARepo,
     /// The repository is a shallow clone, so tags and history are incomplete.
@@ -22,6 +22,21 @@ pub enum Error {
     ConfigExists(PathBuf),
     /// Neither `XDG_CONFIG_HOME` nor `HOME` is set.
     NoGlobalConfigDir,
+    /// `update` has no prebuilt binary for this platform.
+    UnsupportedPlatform {
+        os: &'static str,
+        arch: &'static str,
+    },
+    /// A release asset is malformed.
+    InvalidRelease { url: String, message: String },
+    /// A downloaded archive doesn't match its published checksum.
+    ChecksumMismatch {
+        file: String,
+        expected: String,
+        actual: String,
+    },
+    /// `update` can't write to the directory holding the binary.
+    NotWritable(PathBuf),
     /// Reading or writing a file failed.
     Io {
         action: &'static str,
@@ -50,8 +65,10 @@ impl Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::GitNotFound => write!(f, "could not run `git`; is it installed and on PATH?"),
-            Error::Git { command, stderr } => {
+            Error::ToolNotFound(tool) => {
+                write!(f, "could not run `{tool}`; is it installed and on PATH?")
+            }
+            Error::Command { command, stderr } => {
                 write!(f, "`{command}` failed")?;
                 let stderr = stderr.trim();
                 if !stderr.is_empty() {
@@ -79,6 +96,30 @@ impl fmt::Display for Error {
                 f,
                 "cannot locate the global config directory: neither XDG_CONFIG_HOME nor HOME is set"
             ),
+            Error::UnsupportedPlatform { os, arch } => write!(
+                f,
+                "no prebuilt versinc binary for {os} {arch}; build it from source with \
+                 `cargo install --git {}`",
+                env!("CARGO_PKG_REPOSITORY")
+            ),
+            Error::InvalidRelease { url, message } => {
+                write!(f, "unexpected release asset {url}: {message}")
+            }
+            Error::ChecksumMismatch {
+                file,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "checksum mismatch for {file}: expected sha256 {expected}, got {actual}"
+            ),
+            Error::NotWritable(dir) => write!(
+                f,
+                "cannot replace versinc in {}: permission denied; re-run with the permissions \
+                 needed to write there (e.g. `sudo versinc update`), or reinstall it into a \
+                 directory you own",
+                dir.display()
+            ),
             Error::Io {
                 action,
                 path,
@@ -102,8 +143,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn git_error_includes_trimmed_stderr() {
-        let err = Error::Git {
+    fn command_error_includes_trimmed_stderr() {
+        let err = Error::Command {
             command: "git log".into(),
             stderr: "fatal: bad revision\n".into(),
         };
@@ -111,8 +152,8 @@ mod tests {
     }
 
     #[test]
-    fn git_error_without_stderr() {
-        let err = Error::Git {
+    fn command_error_without_stderr() {
+        let err = Error::Command {
             command: "git log".into(),
             stderr: " \n".into(),
         };
@@ -148,7 +189,10 @@ mod tests {
     #[test]
     fn remaining_messages() {
         assert_eq!(Error::NotARepo.to_string(), "not inside a git repository");
-        assert!(Error::GitNotFound.to_string().contains("PATH"));
+        assert_eq!(
+            Error::ToolNotFound("curl").to_string(),
+            "could not run `curl`; is it installed and on PATH?"
+        );
         assert!(
             Error::NoGlobalConfigDir
                 .to_string()
@@ -162,5 +206,36 @@ mod tests {
             Error::ConfigExists("versinc.toml".into()).to_string(),
             "versinc.toml already exists; pass --force to overwrite it"
         );
+    }
+
+    #[test]
+    fn update_messages() {
+        let message = Error::UnsupportedPlatform {
+            os: "windows",
+            arch: "x86_64",
+        }
+        .to_string();
+        assert!(message.starts_with("no prebuilt versinc binary for windows x86_64"));
+        assert!(message.contains("cargo install --git https://github.com/"));
+        assert_eq!(
+            Error::InvalidRelease {
+                url: "https://x/m.json".into(),
+                message: "no version".into(),
+            }
+            .to_string(),
+            "unexpected release asset https://x/m.json: no version"
+        );
+        assert_eq!(
+            Error::ChecksumMismatch {
+                file: "a.tar.xz".into(),
+                expected: "aa".into(),
+                actual: "bb".into(),
+            }
+            .to_string(),
+            "checksum mismatch for a.tar.xz: expected sha256 aa, got bb"
+        );
+        let message = Error::NotWritable("/usr/local/bin".into()).to_string();
+        assert!(message.starts_with("cannot replace versinc in /usr/local/bin: permission denied"));
+        assert!(message.contains("sudo versinc update"));
     }
 }

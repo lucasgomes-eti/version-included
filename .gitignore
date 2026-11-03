@@ -30,3 +30,7 @@ rustc-ice-*.txt
 
 # Coverage report from cargo llvm-cov
 lcov.info
+
+# Site built by oranda, and the book it builds with mdbook before copying it there
+public/
+docs/book/

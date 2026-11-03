@@ -8,6 +8,7 @@
     "additional_css": [
       "docs/css/versinc.css"
     ],
+    "logo": "static/readme_header.png",
     "favicon": "static/favicon.ico"
   },
   "components": {

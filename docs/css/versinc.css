@@ -29,3 +29,18 @@
   --well-bg-highlight: var(--versinc-surface);
   --link-color: var(--versinc-accent);
 }
+
+/*
+ * The header image (styles.logo) replaces the plain text title, and the
+ * README's own copy of it is hidden on the site, where it would repeat right
+ * below the header. On GitHub the README still shows it.
+ */
+:root.dark header .logo {
+  max-width: min(40rem, 100%);
+}
+
+:root.dark header h1.title,
+:root.dark main > :not(header) img[src$="readme_header.png"],
+:root.dark main > :not(header) p:has(> img[src$="readme_header.png"]:only-child) {
+  display: none;
+}

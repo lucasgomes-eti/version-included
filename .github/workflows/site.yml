@@ -1,0 +1,73 @@
+name: Site
+
+# Builds the project site with oranda (README, the docs/ book and the install
+# page) and publishes it to GitHub Pages. dist calls this workflow from
+# release.yml after each release (post-announce-jobs), so the site shows the
+# docs of the released tag and oranda already sees the new release. Pull
+# requests only build it; run it by hand to republish, e.g. after a docs fix.
+on:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      plan:
+        description: dist's release plan (unused)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install oranda
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/oranda/releases/download/v0.6.5/oranda-installer.sh | sh
+          oranda --version
+
+      - name: Build the site
+        run: oranda build
+
+      # oranda's mdbook theme ignores docs/theme/, so the book's pages would
+      # keep mdbook's default favicon; point them at the site's instead.
+      - name: Use the site favicon in the book
+        run: |
+          sed -i \
+            -e 's|<link rel="icon" href="favicon.svg">|<link rel="icon" href="../favicon.ico">|' \
+            -e 's|<link rel="shortcut icon" href="favicon.png">||' \
+            public/book/*.html
+          rm -f public/book/favicon.svg public/book/favicon.png
+          if grep -l 'href="favicon\.\(svg\|png\)"' public/book/*.html; then
+            echo "::error title=Site::book pages above still link mdbook's favicon"
+            exit 1
+          fi
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: public
+
+  deploy:
+    name: Deploy
+    # Called from release.yml, the event is the release's tag push.
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    # The github-pages environment must allow the v* tags release.yml runs on,
+    # not only main (Settings → Environments → github-pages).
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

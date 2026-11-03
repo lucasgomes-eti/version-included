@@ -28,7 +28,13 @@ oranda dev   # serves http://127.0.0.1:7979/version-included/ and rebuilds on ch
 
 `oranda build` writes the site to `public/` without serving it. Images the README uses must live
 in `static/`, which oranda copies into the site as is, so the same relative path works on GitHub
-and on the site.
+and on the site. Colors and the header live in `docs/css/versinc.css`, which both `oranda.json`
+and `docs/book.toml` load.
+
+The README is the site's home page, but oranda doesn't rewrite its relative links, so the README
+links to the articles by their published URLs. The book's own pages link to each other with
+relative `.md` links. See [Site publishing](releasing.md#site-publishing) for how the site is
+deployed.
 
 ## Architecture
 

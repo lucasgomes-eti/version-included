@@ -56,7 +56,8 @@ which starts dist's `release.yml`. `release.yml` is generated: edit `dist-worksp
 
 The public GitHub Action (`action.yml`, composite) is a separate concern from this repo's own
 workflows. It installs a released binary; its `version` input default is marked
-`# x-release-version` and rewritten by the Release job in each `chore(release)` commit.
+`# x-release-version` and rewritten by the Release job in each `chore(release)` commit, along with
+the `version-included@vX.Y.Z` pins in `README.md` and `docs/src/github-action.md`.
 `action-test.yml` tests it on PRs and pushes, and dist calls it after each release via
 `post-announce-jobs`.
 

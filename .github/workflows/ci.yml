@@ -181,6 +181,11 @@ jobs:
           # The public action installs this release by default from this tag on.
           sed -i -E "s/^( *default: )\"[^\"]*\"( # x-release-version)$/\1\"$VERSION\"\2/" action.yml
           grep -q "default: \"$VERSION\" # x-release-version" action.yml
+          # The usage examples pin the action to the release they document.
+          for doc in README.md docs/src/github-action.md; do
+            sed -i -E "s#(lucasgomes-eti/version-included@v)[0-9]+\.[0-9]+\.[0-9]+#\1$VERSION#g" "$doc"
+            grep -q "lucasgomes-eti/version-included@v$VERSION" "$doc"
+          done
           git diff --stat
 
           git commit --all --message "chore(release): $tag"

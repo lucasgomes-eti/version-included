@@ -4,8 +4,9 @@ Releases are fully automated; nobody tags by hand. On every push to `main`, afte
 
 1. The **Version** job calculates the next version with `versinc` itself.
 2. If it differs from the latest tag, the **Release** job (in `ci.yml`) uses a GitHub App
-   installation token to commit the bumped version in `Cargo.toml`, `Cargo.lock` and the
-   action's default `version` input (`action.yml`) as `chore(release): vX.Y.Z`, create the tag
+   installation token to commit the bumped version in `Cargo.toml`, `Cargo.lock`, the action's
+   default `version` input (`action.yml`) and the action pins in the README and
+   [GitHub Action](github-action.md) examples as `chore(release): vX.Y.Z`, create the tag
    `vX.Y.Z`, and push both atomically. If `main` moved in the meantime, nothing is pushed and the
    next run releases instead.
 3. The tag push starts

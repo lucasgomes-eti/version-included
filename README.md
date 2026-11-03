@@ -25,12 +25,12 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/lucasgomes-eti/version-
 ```
 
 For the supported platforms, installer options and building from source, see
-[Installation](docs/src/installation.md).
+[Installation](https://lucasgomes-eti.github.io/version-included/book/installation.html).
 
 ## Usage
 
 Run `versinc` anywhere in a git repository. It works without any configuration; see
-[How the version is calculated](docs/src/how-it-works.md) for the default rules.
+[How the version is calculated](https://lucasgomes-eti.github.io/version-included/book/how-it-works.html) for the default rules.
 
 ```sh
 versinc                 # print the next version
@@ -40,7 +40,7 @@ versinc update --check  # report whether a newer release exists
 versinc update          # install it
 ```
 
-See [Configuration](docs/src/configuration.md) and [Updating](docs/src/installation.md#updating)
+See [Configuration](https://lucasgomes-eti.github.io/version-included/book/configuration.html) and [Updating](https://lucasgomes-eti.github.io/version-included/book/installation.html#updating)
 for details.
 
 ## GitHub Action
@@ -63,20 +63,20 @@ jobs:
 > **Important:** always set `fetch-depth: 0`. On the shallow clone `actions/checkout` makes by
 > default, `versinc` fails rather than calculate a wrong version.
 
-See [GitHub Action](docs/src/github-action.md) for its inputs, outputs and supported runners.
+See [GitHub Action](https://lucasgomes-eti.github.io/version-included/book/github-action.html) for its inputs, outputs and supported runners.
 
 ## Documentation
 
-- [Installation](docs/src/installation.md): platforms, installer options, building from source,
+- [Installation](https://lucasgomes-eti.github.io/version-included/book/installation.html): platforms, installer options, building from source,
   updating
-- [How the version is calculated](docs/src/how-it-works.md): commit rules, edge cases, branches
+- [How the version is calculated](https://lucasgomes-eti.github.io/version-included/book/how-it-works.html): commit rules, edge cases, branches
   and prereleases
-- [Configuration](docs/src/configuration.md): config files, layering, reference
-- [Output and exit codes](docs/src/output.md): options, JSON output, errors
-- [GitHub Action](docs/src/github-action.md): inputs, outputs, supported runners
-- [Development](docs/src/development.md) and [Releases](docs/src/releasing.md): building, testing,
+- [Configuration](https://lucasgomes-eti.github.io/version-included/book/configuration.html): config files, layering, reference
+- [Output and exit codes](https://lucasgomes-eti.github.io/version-included/book/output.html): options, JSON output, errors
+- [GitHub Action](https://lucasgomes-eti.github.io/version-included/book/github-action.html): inputs, outputs, supported runners
+- [Development](https://lucasgomes-eti.github.io/version-included/book/development.html) and [Releases](https://lucasgomes-eti.github.io/version-included/book/releasing.html): building, testing,
   CI and the release pipeline
 
 ## License
 
-[Apache-2.0](LICENSE)
+[Apache-2.0](https://github.com/lucasgomes-eti/version-included/blob/main/LICENSE)

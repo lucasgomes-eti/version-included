@@ -17,8 +17,12 @@ install-path = "~/.local/bin"
 hosting = "github"
 # Whether to install an updater program
 install-updater = false
-# Test the public GitHub Action against each newly published release
-post-announce-jobs = ["./action-test"]
+# After each release: test the public GitHub Action against the new binaries,
+# and publish the site (GitHub Pages)
+post-announce-jobs = ["./action-test", "./site"]
+# Deploying to GitHub Pages needs these; a called workflow can't request more
+# than its calling job grants
+github-custom-job-permissions = { "site" = { contents = "read", pages = "write", id-token = "write" } }
 
 # dist defaults aarch64-apple-darwin to macos-14, which GitHub retired on
 # November 2, 2026 (https://github.com/actions/runner-images/issues/13518).

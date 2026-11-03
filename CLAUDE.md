@@ -45,7 +45,10 @@ oranda dev                  # preview the site at http://127.0.0.1:7979/version-
 ```
 
 The site is configured in `oranda.json` and built into `public/` (ignored, like mdbook's
-intermediate `docs/book/`). README images go in `static/`.
+intermediate `docs/book/`). README images go in `static/`, and the README links to articles by
+their published URLs (`https://lucasgomes-eti.github.io/version-included/book/<article>.html`),
+since oranda doesn't rewrite relative links. `site.yml` deploys the site to GitHub Pages; dist
+calls it after each release via `post-announce-jobs`.
 
 CI (`.github/workflows/ci.yml`) runs fmt, clippy with `-D warnings`, and the tests under
 `cargo llvm-cov` on Linux only, prints this repo's own version with `versinc` built from the

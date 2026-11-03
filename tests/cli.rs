@@ -642,14 +642,14 @@ fn usage_errors_exit_with_2() {
 
 // update
 
-/// The release archive target for the machine running the tests.
-fn release_target() -> &'static str {
+/// The release archive target for the machine running the tests, or `None`
+/// where releases ship no binary (`versinc update` refuses to run there).
+fn release_target() -> Option<&'static str> {
     match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("linux", "x86_64") => "x86_64-unknown-linux-musl",
-        ("linux", "aarch64") => "aarch64-unknown-linux-musl",
-        ("macos", "x86_64") => "x86_64-apple-darwin",
-        ("macos", "aarch64") => "aarch64-apple-darwin",
-        other => panic!("no release target for {other:?}"),
+        ("linux", "x86_64") => Some("x86_64-unknown-linux-musl"),
+        ("linux", "aarch64") => Some("aarch64-unknown-linux-musl"),
+        ("macos", "aarch64") => Some("aarch64-apple-darwin"),
+        _ => None,
     }
 }
 
@@ -669,7 +669,8 @@ fn sha256(path: &Path) -> String {
 
 /// A copy of versinc in a directory of its own, so `update` may replace it,
 /// and a `file://` releases mirror whose latest release is `latest`. The
-/// released "binary" is a script that prints `versinc <latest>`.
+/// released "binary" is a script that prints `versinc <latest>`. `None` on
+/// platforms without a release target, where these tests are skipped.
 struct UpdateFixture {
     sandbox: Sandbox,
     bin_dir: PathBuf,
@@ -678,7 +679,8 @@ struct UpdateFixture {
 }
 
 impl UpdateFixture {
-    fn new(latest: &str) -> Self {
+    fn new(latest: &str) -> Option<Self> {
+        let target = release_target()?;
         let sandbox = Sandbox::new();
         let bin_dir = sandbox.root.join("bin");
         fs::create_dir_all(&bin_dir).unwrap();
@@ -691,7 +693,7 @@ impl UpdateFixture {
                 r#"{{"releases": [{{"app_name": "version-included", "app_version": "{latest}"}}]}}"#
             ),
         );
-        let name = format!("version-included-{}", release_target());
+        let name = format!("version-included-{target}");
         let script = sandbox.write(
             &format!("build/{name}/versinc"),
             &format!("#!/bin/sh\necho \"versinc {latest}\"\n"),
@@ -715,12 +717,12 @@ impl UpdateFixture {
         )
         .unwrap();
 
-        UpdateFixture {
+        Some(UpdateFixture {
             sandbox,
             bin_dir,
             exe,
             archive,
-        }
+        })
     }
 
     fn versinc(&self) -> assert_cmd::Command {
@@ -742,7 +744,9 @@ const CURRENT: &str = env!("CARGO_PKG_VERSION");
 
 #[test]
 fn update_installs_newer_release() {
-    let fixture = UpdateFixture::new("99.0.0");
+    let Some(fixture) = UpdateFixture::new("99.0.0") else {
+        return;
+    };
     fixture
         .versinc()
         .arg("update")
@@ -759,7 +763,9 @@ fn update_installs_newer_release() {
 
 #[test]
 fn update_check_does_not_install() {
-    let fixture = UpdateFixture::new("99.0.0");
+    let Some(fixture) = UpdateFixture::new("99.0.0") else {
+        return;
+    };
     fixture
         .versinc()
         .args(["update", "--check"])
@@ -773,7 +779,9 @@ fn update_check_does_not_install() {
 
 #[test]
 fn update_when_up_to_date() {
-    let fixture = UpdateFixture::new(CURRENT);
+    let Some(fixture) = UpdateFixture::new(CURRENT) else {
+        return;
+    };
     fixture
         .versinc()
         .arg("update")
@@ -785,7 +793,9 @@ fn update_when_up_to_date() {
 
 #[test]
 fn update_rejects_checksum_mismatch() {
-    let fixture = UpdateFixture::new("99.0.0");
+    let Some(fixture) = UpdateFixture::new("99.0.0") else {
+        return;
+    };
     fs::write(
         fixture.archive.with_extension("xz.sha256"),
         format!("{} *x\n", "0".repeat(64)),
@@ -803,7 +813,9 @@ fn update_rejects_checksum_mismatch() {
 
 #[test]
 fn update_reports_missing_release() {
-    let fixture = UpdateFixture::new("99.0.0");
+    let Some(fixture) = UpdateFixture::new("99.0.0") else {
+        return;
+    };
     fs::remove_file(&fixture.archive).unwrap();
     fixture
         .versinc()
@@ -816,7 +828,9 @@ fn update_reports_missing_release() {
 
 #[test]
 fn update_in_read_only_directory_explains_permissions() {
-    let fixture = UpdateFixture::new("99.0.0");
+    let Some(fixture) = UpdateFixture::new("99.0.0") else {
+        return;
+    };
     fs::set_permissions(&fixture.bin_dir, fs::Permissions::from_mode(0o555)).unwrap();
     // Root ignores directory permissions, so the check is meaningless there.
     let root = fs::write(fixture.bin_dir.join("probe"), "").is_ok();
@@ -837,7 +851,9 @@ fn update_in_read_only_directory_explains_permissions() {
 
 #[test]
 fn update_without_curl() {
-    let fixture = UpdateFixture::new("99.0.0");
+    let Some(fixture) = UpdateFixture::new("99.0.0") else {
+        return;
+    };
     fixture
         .versinc()
         .arg("update")

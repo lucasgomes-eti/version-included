@@ -5,6 +5,9 @@
   },
   "styles": {
     "theme": "dark",
+    "additional_css": [
+      "docs/css/versinc.css"
+    ],
     "favicon": "static/favicon.ico"
   },
   "components": {

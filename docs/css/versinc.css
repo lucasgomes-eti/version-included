@@ -1,0 +1,31 @@
+/*
+ * versinc colors on top of oranda's dark theme. The site loads this file
+ * through oranda.json (styles.additional_css) and the book through
+ * book.toml (output.html.additional-css), so each block below only matches
+ * on one of them.
+ */
+:root {
+  --versinc-bg: #0e1116;
+  --versinc-surface: #161b22; /* code wells, tables, selected tabs: a step above the background */
+  --versinc-accent: #22c55e;
+}
+
+/* oranda pages: home, install */
+:root.dark {
+  color-scheme: dark; /* dark scrollbars, e.g. under the long installer command */
+  --dark-bg-color: var(--versinc-bg);
+  --dark-link-color: var(--versinc-accent);
+  --dark-highlight-bg-color: var(--versinc-surface);
+}
+
+:root.dark pre {
+  scrollbar-color: #30363d transparent;
+}
+
+/* The book (oranda's mdbook theme) */
+.oranda-dark {
+  --bg: var(--versinc-bg);
+  --well-bg: var(--versinc-surface);
+  --well-bg-highlight: var(--versinc-surface);
+  --link-color: var(--versinc-accent);
+}

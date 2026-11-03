@@ -3,3 +3,7 @@ title = "version-included"
 description = "Calculate the next SemVer version from git commit messages"
 language = "en"
 src = "src"
+
+[output.html]
+# Site colors, shared with oranda.json
+additional-css = ["css/versinc.css"]

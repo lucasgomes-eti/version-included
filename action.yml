@@ -3,7 +3,7 @@ description: Calculate the next SemVer version from git commit messages
 author: Lucas Gomes
 branding:
   icon: tag
-  color: blue
+  color: green
 
 inputs:
   version:

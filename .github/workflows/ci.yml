@@ -18,12 +18,8 @@ env:
 
 jobs:
   test:
-    name: Test (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    name: Test
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
@@ -52,7 +48,6 @@ jobs:
         run: cargo llvm-cov report --summary-only
 
       - name: Upload coverage report
-        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-lcov

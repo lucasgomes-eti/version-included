@@ -6,7 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `version-included` is a Rust CLI (binary `versinc`) that calculates the next SemVer version from git
 history. It is read-only: it never creates tags or commits. Rust edition 2024, Apache-2.0. The
-README documents user-facing behavior; keep it in sync as features land.
+README is a short overview; the full documentation is an mdbook in `docs/` (articles in
+`docs/src/`, ordered by `docs/src/SUMMARY.md`), which oranda will publish as the project site. Keep
+both in sync as features land. Link between articles with relative `.md` links, and to repository
+files with absolute GitHub URLs, since those files are outside the book.
 
 ## Architecture
 

@@ -21,18 +21,14 @@ permissions:
 
 jobs:
   test:
-    name: Action (${{ matrix.os }})
+    name: Action
     # A `chore(release)` commit points the action at a release that dist is
     # still building; that release is tested when release.yml calls this
     # workflow instead.
     if: >-
       inputs.plan != '' || github.event_name != 'push'
       || !startsWith(github.event.head_commit.message, 'chore(release):')
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:

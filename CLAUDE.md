@@ -41,7 +41,11 @@ cargo test <name>           # run tests whose name matches <name>
 cargo fmt                   # format
 cargo clippy --all-targets  # lint
 cargo llvm-cov              # tests with coverage summary (needs cargo-llvm-cov + llvm-tools)
+oranda dev                  # preview the site at http://127.0.0.1:7979/version-included/ (oranda 0.6.5)
 ```
+
+The site is configured in `oranda.json` and built into `public/` (ignored, like mdbook's
+intermediate `docs/book/`). README images go in `static/`.
 
 CI (`.github/workflows/ci.yml`) runs fmt, clippy with `-D warnings`, and the tests under
 `cargo llvm-cov` on Linux only, prints this repo's own version with `versinc` built from the

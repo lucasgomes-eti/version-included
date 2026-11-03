@@ -1,0 +1,24 @@
+{
+  "$schema": "https://github.com/axodotdev/oranda/releases/download/v0.6.5/oranda-config-schema.json",
+  "build": {
+    "path_prefix": "version-included"
+  },
+  "styles": {
+    "theme": "dark",
+    "favicon": "static/favicon.ico"
+  },
+  "components": {
+    "artifacts": {
+      "cargo_dist": true,
+      "package_managers": {
+        "additional": {
+          "cargo": "cargo install --git https://github.com/lucasgomes-eti/version-included"
+        }
+      }
+    },
+    "mdbook": {
+      "path": "./docs"
+    },
+    "changelog": false
+  }
+}

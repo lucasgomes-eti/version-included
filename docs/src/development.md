@@ -13,6 +13,23 @@ cargo llvm-cov --lcov --output-path lcov.info   # LCOV report, as CI produces it
 Install the coverage tool with `rustup component add llvm-tools` and
 `cargo install cargo-llvm-cov --locked`.
 
+## Documentation site
+
+The project site is built with [oranda](https://github.com/axodotdev/oranda) from
+[`oranda.json`](https://github.com/lucasgomes-eti/version-included/blob/main/oranda.json): the
+README becomes the home page, this book (`docs/`, an [mdbook](https://rust-lang.github.io/mdBook/))
+is published under `book/`, and the install page lists the latest release's artifacts from its
+`dist-manifest.json`. To preview it:
+
+```sh
+cargo install oranda --locked --version 0.6.5   # once
+oranda dev   # serves http://127.0.0.1:7979/version-included/ and rebuilds on changes
+```
+
+`oranda build` writes the site to `public/` without serving it. Images the README uses must live
+in `static/`, which oranda copies into the site as is, so the same relative path works on GitHub
+and on the site.
+
 ## Architecture
 
 The version logic is made of pure functions (`src/commit.rs`, `classify.rs`, `version.rs`,

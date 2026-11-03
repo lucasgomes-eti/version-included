@@ -53,7 +53,6 @@ pub fn target_for(os: &str, arch: &str) -> Option<&'static str> {
     match (os, arch) {
         ("linux", "x86_64") => Some("x86_64-unknown-linux-musl"),
         ("linux", "aarch64") => Some("aarch64-unknown-linux-musl"),
-        ("macos", "x86_64") => Some("x86_64-apple-darwin"),
         ("macos", "aarch64") => Some("aarch64-apple-darwin"),
         _ => None,
     }
@@ -436,8 +435,9 @@ pub(crate) mod tests {
             target_for("linux", "aarch64"),
             Some("aarch64-unknown-linux-musl")
         );
-        assert_eq!(target_for("macos", "x86_64"), Some("x86_64-apple-darwin"));
         assert_eq!(target_for("macos", "aarch64"), Some("aarch64-apple-darwin"));
+        // Releases stopped shipping Intel macOS binaries after v0.3.0.
+        assert_eq!(target_for("macos", "x86_64"), None);
         assert_eq!(target_for("windows", "x86_64"), None);
         assert_eq!(target_for("linux", "riscv64"), None);
     }

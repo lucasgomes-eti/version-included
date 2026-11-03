@@ -48,9 +48,8 @@ runs:
         case "$RUNNER_OS_NAME/$RUNNER_ARCH_NAME" in
           Linux/X64) target=x86_64-unknown-linux-musl ;;
           Linux/ARM64) target=aarch64-unknown-linux-musl ;;
-          macOS/X64) target=x86_64-apple-darwin ;;
           macOS/ARM64) target=aarch64-apple-darwin ;;
-          *) fail "Unsupported runner: $RUNNER_OS_NAME $RUNNER_ARCH_NAME. versinc runs on Linux and macOS (X64 or ARM64) runners; Windows is not supported." ;;
+          *) fail "Unsupported runner: $RUNNER_OS_NAME $RUNNER_ARCH_NAME. versinc runs on Linux (X64 or ARM64) and macOS ARM64 runners; Intel macOS and Windows are not supported." ;;
         esac
 
         version="${VERSINC_VERSION#v}"
